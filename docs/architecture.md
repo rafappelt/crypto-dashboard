@@ -75,6 +75,9 @@ The infrastructure layer implements the ports defined in the application layer:
 - **Publishers**: Implementations of event publishers
   - `RxJSHourlyAveragePublisher`: Publishes hourly averages using RxJS
 
+- **Services**: Infrastructure services
+  - `FinnhubHealthService`: Validates Finnhub API key health
+
 - **Logging**: Logging implementations
   - `ConsoleLoggerService`: Console-based logging
 
@@ -106,6 +109,10 @@ The interface layer is split into **framework-agnostic core** and **framework-sp
     - `AppModule`: Main application module
     - `CoreModule`: Core services module
     - `ExchangeRateModule`: Exchange rate services module
+
+  - **Adapters**: NestJS-specific wrappers for backend-core services
+    - `FinnhubHealthService`: NestJS adapter that injects ConfigService and delegates to backend-core service
+    - `ExchangeRateService`: NestJS adapter for exchange rate use cases
 
 **Frontend Structure**:
 
@@ -254,11 +261,15 @@ ExchangeRateOrchestratorService (Application)
 HTTP Request
     │
     ▼
-AppController (Interface)
+AppController (Interface - NestJS)
     │
-    │ (delegates to service)
+    │ (delegates to adapter)
     ▼
-FinnhubHealthService (Interface)
+FinnhubHealthService (Interface - NestJS Adapter)
+    │
+    │ (injects ConfigService, delegates to core)
+    ▼
+FinnhubHealthService (Infrastructure - backend-core)
     │
     │ (validates API key)
     ▼

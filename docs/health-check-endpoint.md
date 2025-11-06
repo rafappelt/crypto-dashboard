@@ -8,9 +8,10 @@ The `/health` endpoint provides a comprehensive health check for the Crypto Dash
 
 ### Service: `FinnhubHealthService`
 
-**Location**: `apps/backend-nest/src/finnhub/finnhub-health.service.ts`
+**Core Service Location**: `packages/backend-core/src/infrastructure/services/finnhub-health.service.ts`  
+**NestJS Adapter Location**: `apps/backend-nest/src/finnhub/finnhub-health.service.ts`
 
-The service implements the following validation logic:
+The core service (framework-agnostic) implements the following validation logic:
 
 1. **API Key Presence Check**
    - Verifies that `FINNHUB_API_KEY` environment variable is set and non-empty
@@ -32,9 +33,15 @@ The service implements the following validation logic:
 **Location**: `apps/backend-nest/src/app.controller.ts`
 
 The controller:
-- Calls `FinnhubHealthService.checkApiKey()`
+- Calls `FinnhubHealthService.checkApiKey()` (NestJS adapter)
+- The adapter injects `ConfigService` and delegates to the core service in `backend-core`
 - Returns HTTP 200 with success payload if API key is valid
 - Returns HTTP 503 (Service Unavailable) with error payload if API key is invalid or missing
+
+**Architecture Note**: The service follows Clean Architecture principles:
+- Core logic is in `backend-core` (framework-agnostic)
+- NestJS adapter in `backend-nest` handles dependency injection and delegates to core
+- This allows the health check logic to be reused with other frameworks (Express, Fastify, etc.)
 
 ## Request/Response Examples
 

@@ -21,6 +21,7 @@ export * from './infrastructure/repositories/in-memory-exchange-rate.repository.
 export * from './infrastructure/repositories/file-system-exchange-rate.repository.js';
 export * from './infrastructure/publishers/rxjs-hourly-average-publisher.js';
 export * from './infrastructure/adapters/finnhub-adapter.js';
+export * from './infrastructure/services/finnhub-health.service.js';
 export * from './infrastructure/logging/index.js';
 export * from './infrastructure/adapters/constants.js';
 export * from './infrastructure/repositories/constants.js';
