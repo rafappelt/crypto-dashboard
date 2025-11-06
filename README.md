@@ -471,30 +471,65 @@ pnpm build
 - Verify backend WebSocket gateway is running
 - Check network tab for WebSocket connection status
 
-## Architecture Decisions
+## Architecture
 
-### Real-time Architecture
+This project follows **Domain-Driven Design (DDD)** and **Clean Architecture** principles. The architecture is organized in layers with clear dependency rules ensuring maintainability, testability, and separation of concerns.
+
+### Architecture Overview
+
+- **Domain Layer**: Pure business logic, no external dependencies
+- **Application Layer**: Use cases and orchestration, depends only on domain
+- **Infrastructure Layer**: External concerns (APIs, storage), implements application ports
+- **Interface Layer**: User-facing (NestJS controllers, React components)
+
+**Dependency Rule**: Dependencies point inward only. Domain has zero dependencies on outer layers.
+
+### Quick Reference
+
+- **[Architecture Documentation](./docs/architecture.md)**: Comprehensive architecture guide
+- **[Real-time Architecture](./docs/realtime-architecture.md)**: WebSocket and streaming details
+- **[Data Persistence](./docs/data-persistence.md)**: Storage strategies and limitations
+
+### Architecture Decisions Summary
+
+#### Real-time Architecture
 - **Backend**: NestJS WebSocket Gateway using Socket.IO for bidirectional communication
 - **Frontend**: Socket.IO client for real-time updates
 - **Data Flow**: Finnhub WebSocket → NestJS → Socket.IO Gateway → React Frontend
+- **See**: [Real-time Architecture Documentation](./docs/realtime-architecture.md)
 
-### Error Handling
-- Automatic reconnection with exponential backoff
+#### Error Handling
+- Automatic reconnection with exponential backoff (backend)
+- Socket.IO built-in reconnection (frontend)
 - Connection status indicators in UI
 - Comprehensive logging on backend
 - Graceful error handling for API failures
 
-### Code Organization
-- Monorepo structure with shared packages for types and services
-- Clear separation of concerns (Finnhub service, Exchange Rate service, WebSocket gateway)
-- Type-safe communication using shared TypeScript types
+#### Code Organization
+- **Monorepo**: Turborepo with pnpm workspaces
+- **Packages**: Shared types, backend-core, frontend-core
+- **Layers**: Clear separation (Domain, Application, Infrastructure, Interface)
+- **Type Safety**: Shared TypeScript types across packages
+- **See**: [Architecture Documentation](./docs/architecture.md)
 
-### Data Persistence
+#### Data Persistence
 - **Hourly Averages**: Persisted to JSON file (`data/hourly-averages.json`) using file system repository
 - **Exchange Rates**: Kept in memory for real-time performance (last hour, max 3600 entries per pair)
 - **Persistence Strategy**: File-based storage with atomic write operations to prevent data corruption
 - **Data Directory**: Configurable via `DATA_DIR` environment variable (defaults to `./data`)
 - **Docker**: Data directory is mounted as a volume to persist data across container restarts
+- **Limitations**: Single-instance only, no concurrent write protection, see [Data Persistence Documentation](./docs/data-persistence.md) for details
+
+### Design Patterns
+
+- **Repository Pattern**: Abstract data access (domain defines interface, infrastructure implements)
+- **Adapter Pattern**: Adapt external services to internal interfaces (Finnhub, Socket.IO)
+- **Observer Pattern (RxJS)**: Reactive data streams for decoupled communication
+- **Use Case Pattern**: Encapsulate business workflows in single-purpose classes
+- **Presenter Pattern**: Transform domain data for UI consumption (frontend)
+
+**See**: [Architecture Documentation](./docs/architecture.md) for detailed pattern explanations
+
 
 ## License
 
