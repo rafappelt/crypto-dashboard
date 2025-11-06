@@ -1,19 +1,35 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { FinnhubHealthService } from './finnhub/finnhub-health.service.js';
 
 describe('AppController', () => {
   let controller: AppController;
   let service: AppService;
+  let finnhubHealthService: jest.Mocked<FinnhubHealthService>;
 
   beforeEach(async () => {
+    const mockFinnhubHealthService = {
+      checkApiKey: jest.fn().mockResolvedValue({
+        isValid: true,
+        error: null,
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
+      providers: [
+        AppService,
+        {
+          provide: FinnhubHealthService,
+          useValue: mockFinnhubHealthService,
+        },
+      ],
     }).compile();
 
     controller = module.get<AppController>(AppController);
     service = module.get<AppService>(AppService);
+    finnhubHealthService = module.get(FinnhubHealthService);
   });
 
   it('should be defined', () => {
@@ -29,8 +45,8 @@ describe('AppController', () => {
   });
 
   describe('getHealth', () => {
-    it('should return health status with timestamp', () => {
-      const result = controller.getHealth();
+    it('should return health status with timestamp', async () => {
+      const result = await controller.getHealth();
 
       expect(result).toHaveProperty('status');
       expect(result.status).toBe('ok');
@@ -39,8 +55,8 @@ describe('AppController', () => {
       expect(() => new Date(result.timestamp)).not.toThrow();
     });
 
-    it('should return valid ISO timestamp', () => {
-      const result = controller.getHealth();
+    it('should return valid ISO timestamp', async () => {
+      const result = await controller.getHealth();
       const timestamp = new Date(result.timestamp);
 
       expect(timestamp.getTime()).not.toBeNaN();
