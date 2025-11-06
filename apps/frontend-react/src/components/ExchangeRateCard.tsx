@@ -76,11 +76,11 @@ export default function ExchangeRateCard({ viewModel, isLoading = false }: Excha
             </div>
           )}
           
-          {viewModel.hasData && viewModel.hourlyAverage && (
+          {viewModel.hasData && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">{messages.exchangeRateCard.hourlyAverage}</span>
               <span className="text-base font-semibold text-blue-600">
-                {viewModel.hourlyAverage} {viewModel.quoteCurrency}
+                {viewModel.hourlyAverage ? `${viewModel.hourlyAverage} ${viewModel.quoteCurrency}` : '—'}
               </span>
             </div>
           )}
