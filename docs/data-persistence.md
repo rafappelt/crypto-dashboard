@@ -69,6 +69,58 @@ await fs.writeFile(tempFilePath, JSON.stringify(data, null, 2), 'utf-8');
 await fs.rename(tempFilePath, this.storageFilePath);
 ```
 
+**Concurrency Control**:
+To prevent race conditions in concurrent operations, the repository uses a mutex lock:
+
+```typescript
+import { Mutex } from 'async-mutex';
+
+class FileSystemExchangeRateRepository {
+  private readonly fileMutex: Mutex = new Mutex();
+
+  // Protects read-modify-write operations
+  private async atomicFileOperation<T>(
+    operation: (data: StorageData) => Promise<{ data: StorageData; result: T }>
+  ): Promise<T> {
+    const release = await this.fileMutex.acquire();
+    try {
+      const storageData = await this.loadStorageData();
+      const { data: modifiedData, result } = await operation(storageData);
+      await this.saveStorageData(modifiedData);
+      return result;
+    } finally {
+      release();
+    }
+  }
+
+  // All write operations use the mutex
+  async saveHourlyAverage(average: HourlyAverageEntity): Promise<void> {
+    await this.atomicFileOperation(async (storageData) => {
+      const key = average.getKey();
+      storageData.hourlyAverages[key] = this.hourlyAverageToData(average);
+      return { data: storageData, result: undefined };
+    });
+  }
+
+  // Read operations also use the mutex to prevent reading during writes
+  async getLatestHourlyAverage(pair: ExchangePair): Promise<HourlyAverageEntity | null> {
+    const release = await this.fileMutex.acquire();
+    try {
+      const storageData = await this.loadStorageData();
+      // ... read logic
+    } finally {
+      release();
+    }
+  }
+}
+```
+
+This ensures:
+- **No Lost Updates**: Concurrent writes don't overwrite each other's changes
+- **Consistent Reads**: Reads never see partially written data
+- **Sequential Processing**: Operations are serialized within the same process
+- **Thread-Safe**: Multiple concurrent calls are safely queued and processed in order
+
 ## File-Based Storage: Limitations and Considerations
 
 ### Limitations
@@ -78,11 +130,13 @@ await fs.rename(tempFilePath, this.storageFilePath);
 - **Impact**: Cannot run multiple backend instances sharing the same data
 - **Workaround**: Use a single instance or implement distributed storage
 
-#### 2. **No Concurrent Write Protection**
-- **Problem**: Multiple processes writing to the same file can cause corruption
-- **Impact**: Race conditions possible if multiple instances access the same file
-- **Mitigation**: Atomic writes help, but don't prevent all race conditions
-- **Current State**: Single-instance deployment mitigates this risk
+#### 2. **Concurrent Write Protection**
+- **Solution**: Mutex-based locking prevents race conditions within single process
+- **Implementation**: `async-mutex` library provides exclusive access to file operations
+- **Coverage**: Protects all read-modify-write operations (save, read, update)
+- **Limitation**: Only protects against concurrent operations within the same Node.js process
+- **Multi-Process**: Does not protect against multiple process instances accessing the same file
+- **Current State**: Safe for single-instance deployment with concurrent operations
 
 #### 3. **Performance at Scale**
 - **Problem**: Reading/writing entire file becomes slow with many averages

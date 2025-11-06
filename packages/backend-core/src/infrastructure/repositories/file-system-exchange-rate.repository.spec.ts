@@ -236,5 +236,63 @@ describe('FileSystemExchangeRateRepository', () => {
       expect(result[2].averagePrice).toBe(2000);
     });
   });
+
+  describe('concurrent operations', () => {
+    it('should handle concurrent saveHourlyAverage calls without data corruption', async () => {
+      const pair: ExchangePair = 'ETH/USDC';
+      const baseHour = new Date('2024-01-01T10:00:00Z');
+      baseHour.setMinutes(0, 0, 0);
+      baseHour.setMilliseconds(0);
+
+      // Create 20 different hourly averages with unique hours
+      const averages = Array.from({ length: 20 }, (_, i) => {
+        const hour = new Date(baseHour);
+        hour.setHours(hour.getHours() + i);
+        return new HourlyAverageEntity(pair, 2000 + i * 100, hour, 100 + i);
+      });
+
+      // Save all averages concurrently
+      await Promise.all(averages.map((avg) => repository.saveHourlyAverage(avg)));
+
+      // Verify all were saved correctly
+      const allAverages = await repository.getAllHourlyAverages(pair);
+      expect(allAverages).toHaveLength(20);
+
+      // Verify each average was saved with correct data
+      for (let i = 0; i < 20; i++) {
+        const expectedPrice = 2000 + i * 100;
+        const expectedCount = 100 + i;
+        const found = allAverages.find((avg) => avg.averagePrice === expectedPrice);
+        expect(found).toBeDefined();
+        expect(found?.sampleCount).toBe(expectedCount);
+      }
+    });
+
+    it('should handle concurrent saveHourlyAverage and read operations', async () => {
+      const pair: ExchangePair = 'ETH/USDC';
+      const baseHour = new Date('2024-01-01T10:00:00Z');
+      baseHour.setMinutes(0, 0, 0);
+      baseHour.setMilliseconds(0);
+
+      // Start concurrent writes and reads
+      const writePromises = Array.from({ length: 10 }, (_, i) => {
+        const hour = new Date(baseHour);
+        hour.setHours(hour.getHours() + i);
+        const average = new HourlyAverageEntity(pair, 2000 + i * 100, hour, 100);
+        return repository.saveHourlyAverage(average);
+      });
+
+      const readPromises = Array.from({ length: 10 }, () =>
+        repository.getLatestHourlyAverage(pair)
+      );
+
+      // All operations should complete without error
+      await expect(Promise.all([...writePromises, ...readPromises])).resolves.not.toThrow();
+
+      // Verify final state is correct
+      const allAverages = await repository.getAllHourlyAverages(pair);
+      expect(allAverages).toHaveLength(10);
+    });
+  });
 });
 

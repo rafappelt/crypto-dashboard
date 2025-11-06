@@ -7,6 +7,7 @@ import { ExchangePair, DEFAULT_EXCHANGE_PAIRS } from '@crypto-dashboard/shared';
 import { MAX_EXCHANGE_RATE_HISTORY_ENTRIES } from './constants.js';
 import { ILogger } from '../../application/ports/logger.port.js';
 import { createDefaultLogger } from '../logging/index.js';
+import { Mutex } from 'async-mutex';
 
 interface HourlyAverageData {
   pair: ExchangePair;
@@ -24,6 +25,7 @@ export class FileSystemExchangeRateRepository implements IExchangeRateRepository
   private readonly storageFilePath: string;
   private readonly logger: ILogger;
   private readonly dataDir: string;
+  private readonly fileMutex: Mutex = new Mutex();
 
   constructor(
     dataDir: string = './data',
@@ -73,11 +75,30 @@ export class FileSystemExchangeRateRepository implements IExchangeRateRepository
       await this.ensureDataDirectory();
       // Write to temporary file first, then rename (atomic operation)
       const tempFilePath = `${this.storageFilePath}.tmp`;
-      await fs.writeFile(tempFilePath, JSON.stringify(data, null, 2), 'utf-8');
+      const jsonContent = JSON.stringify(data, null, 2);
+      await fs.writeFile(tempFilePath, jsonContent, 'utf-8');
       await fs.rename(tempFilePath, this.storageFilePath);
     } catch (error) {
       this.logger.error('Failed to save storage data', error);
       throw error;
+    }
+  }
+
+  /**
+   * Executes a read-modify-write operation atomically using a mutex lock.
+   * This prevents concurrent writes from corrupting the file.
+   */
+  private async atomicFileOperation<T>(
+    operation: (data: StorageData) => Promise<{ data: StorageData; result: T }>
+  ): Promise<T> {
+    const release = await this.fileMutex.acquire();
+    try {
+      const storageData = await this.loadStorageData();
+      const { data: modifiedData, result } = await operation(storageData);
+      await this.saveStorageData(modifiedData);
+      return result;
+    } finally {
+      release();
     }
   }
 
@@ -131,44 +152,55 @@ export class FileSystemExchangeRateRepository implements IExchangeRateRepository
   }
 
   async getLatestHourlyAverage(pair: ExchangePair): Promise<HourlyAverageEntity | null> {
-    const storageData = await this.loadStorageData();
-    const keyPrefix = `${pair}-`;
-    let latest: HourlyAverageEntity | null = null;
-    let latestTime = 0;
+    const release = await this.fileMutex.acquire();
+    try {
+      const storageData = await this.loadStorageData();
+      const keyPrefix = `${pair}-`;
+      let latest: HourlyAverageEntity | null = null;
+      let latestTime = 0;
 
-    for (const [key, data] of Object.entries(storageData.hourlyAverages)) {
-      if (key.startsWith(keyPrefix)) {
-        const hour = new Date(data.hour);
-        const time = hour.getTime();
-        if (time > latestTime) {
-          latestTime = time;
-          latest = this.dataToHourlyAverage(data);
+      for (const [key, data] of Object.entries(storageData.hourlyAverages)) {
+        if (key.startsWith(keyPrefix)) {
+          const hour = new Date(data.hour);
+          const time = hour.getTime();
+          if (time > latestTime) {
+            latestTime = time;
+            latest = this.dataToHourlyAverage(data);
+          }
         }
       }
-    }
 
-    return latest;
+      return latest;
+    } finally {
+      release();
+    }
   }
 
   async saveHourlyAverage(average: HourlyAverageEntity): Promise<void> {
-    const storageData = await this.loadStorageData();
-    const key = average.getKey();
-    storageData.hourlyAverages[key] = this.hourlyAverageToData(average);
-    await this.saveStorageData(storageData);
+    await this.atomicFileOperation(async (storageData) => {
+      const key = average.getKey();
+      storageData.hourlyAverages[key] = this.hourlyAverageToData(average);
+      return { data: storageData, result: undefined };
+    });
   }
 
   async getAllHourlyAverages(pair: ExchangePair): Promise<HourlyAverageEntity[]> {
-    const storageData = await this.loadStorageData();
-    const keyPrefix = `${pair}-`;
-    const averages: HourlyAverageEntity[] = [];
+    const release = await this.fileMutex.acquire();
+    try {
+      const storageData = await this.loadStorageData();
+      const keyPrefix = `${pair}-`;
+      const averages: HourlyAverageEntity[] = [];
 
-    for (const [key, data] of Object.entries(storageData.hourlyAverages)) {
-      if (key.startsWith(keyPrefix)) {
-        averages.push(this.dataToHourlyAverage(data));
+      for (const [key, data] of Object.entries(storageData.hourlyAverages)) {
+        if (key.startsWith(keyPrefix)) {
+          averages.push(this.dataToHourlyAverage(data));
+        }
       }
-    }
 
-    return averages.sort((a, b) => b.hour.getTime() - a.hour.getTime());
+      return averages.sort((a, b) => b.hour.getTime() - a.hour.getTime());
+    } finally {
+      release();
+    }
   }
 }
 
