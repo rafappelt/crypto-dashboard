@@ -45,8 +45,9 @@ export function useDashboardPresenter(): DashboardViewModel {
     // Connect
     service.connect();
 
-    // Initial view model
-    setViewModel(presenter.getViewModel());
+    // Initial view model - set synchronously before effect completes
+    const initialViewModel = presenter.getViewModel();
+    setViewModel(initialViewModel);
 
     return () => {
       service.disconnect();

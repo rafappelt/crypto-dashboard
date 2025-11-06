@@ -144,7 +144,7 @@ export class CoreModule implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     // Start orchestrator asynchronously without blocking module initialization
     // This ensures the API starts even if Finnhub connection fails
-    this.orchestrator.start().catch((error) => {
+    await this.orchestrator.start().catch((error) => {
       console.error('Error starting exchange rate orchestrator:', error);
       // Don't throw - allow the API to start so health check can report the error
     });
