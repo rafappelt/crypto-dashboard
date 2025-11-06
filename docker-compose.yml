@@ -1,0 +1,42 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend-nest/Dockerfile
+    container_name: crypto-dashboard-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=${PORT:-3000}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DATA_DIR=${DATA_DIR:-./data}
+    env_file:
+      - apps/backend-nest/.env
+    volumes:
+      - ./data:/app/apps/backend-nest/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend-react/Dockerfile
+      args:
+        VITE_WEBSOCKET_URL: ${VITE_WEBSOCKET_URL:-http://localhost:3000}
+    container_name: crypto-dashboard-frontend
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_WEBSOCKET_URL=http://localhost:3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+

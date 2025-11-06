@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend-nest/Dockerfile
+    container_name: crypto-dashboard-backend-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=${PORT:-3000}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+    env_file:
+      - apps/backend-nest/.env
+    volumes:
+      - ./apps/backend-nest:/app/apps/backend-nest
+      - ./packages:/app/packages
+      - /app/node_modules
+    restart: unless-stopped
+    command: pnpm --filter @crypto-dashboard/backend-nest dev
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend-react/Dockerfile
+    container_name: crypto-dashboard-frontend-dev
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_WEBSOCKET_URL=http://localhost:3000
+    volumes:
+      - ./apps/frontend-react:/app/apps/frontend-react
+      - ./packages:/app/packages
+      - /app/node_modules
+    restart: unless-stopped
+    command: pnpm --filter @crypto-dashboard/frontend-react dev
+

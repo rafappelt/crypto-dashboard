@@ -1,0 +1,46 @@
+{
+  "name": "@crypto-dashboard/frontend-core",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
+  },
+  "dependencies": {
+    "@crypto-dashboard/shared": "workspace:*",
+    "socket.io-client": "^4.7.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/jest": "^29.5.11",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1"
+  },
+  "jest": {
+    "preset": "ts-jest/presets/default-esm",
+    "testEnvironment": "node",
+    "extensionsToTreatAsEsm": [".ts"],
+    "moduleNameMapper": {
+      "^@crypto-dashboard/shared$": "<rootDir>/src/__mocks__/@crypto-dashboard/shared.ts",
+      "^@crypto-dashboard/shared/(.*)\\.js$": "<rootDir>/../../../packages/shared/src/$1.ts",
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(@crypto-dashboard)/)"
+    ],
+    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": "src",
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage"
+  }
+}
+

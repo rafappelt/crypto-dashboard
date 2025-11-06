@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false
+  },
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts", "src/__mocks__"]
+}
+

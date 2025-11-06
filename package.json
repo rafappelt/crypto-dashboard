@@ -1,0 +1,33 @@
+{
+  "name": "crypto-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time cryptocurrency dashboard that displays live exchange rates for ETH/USDC, ETH/USDT and ETH/BTC with live charts and data updates.",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "type-check": "turbo run type-check",
+    "docker:up": "docker compose up",
+    "docker:up:build": "docker compose up --build",
+    "docker:up:d": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:logs": "docker compose logs -f",
+    "docker:logs:backend": "docker compose logs -f backend",
+    "docker:logs:frontend": "docker compose logs -f frontend",
+    "docker:dev": "docker compose -f docker-compose.dev.yml up"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
+
