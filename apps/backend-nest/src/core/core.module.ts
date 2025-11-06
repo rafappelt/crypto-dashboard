@@ -63,11 +63,15 @@ export const EXCHANGE_RATE_RECEIVER = 'IExchangeRateReceiver';
       provide: ProcessExchangeRateUseCase,
       useFactory: (
         repository: IExchangeRateRepository,
-        publisher: IHourlyAveragePublisher,
+        calculateUseCase: CalculateHourlyAverageUseCase,
       ) => {
-        return new ProcessExchangeRateUseCase(repository, publisher);
+        return new ProcessExchangeRateUseCase(
+          repository, 
+          calculateUseCase,
+          createDefaultLogger()
+        );
       },
-      inject: [EXCHANGE_RATE_REPOSITORY, HOURLY_AVERAGE_PUBLISHER],
+      inject: [EXCHANGE_RATE_REPOSITORY, CalculateHourlyAverageUseCase],
     },
     {
       provide: CalculateHourlyAverageUseCase,

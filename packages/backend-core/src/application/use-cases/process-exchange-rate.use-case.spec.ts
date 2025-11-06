@@ -2,13 +2,15 @@ import { ProcessExchangeRateUseCase } from './process-exchange-rate.use-case.js'
 import { ExchangeRateEntity } from '../../domain/entities/exchange-rate.entity.js';
 import { ExchangeRateReceivedEvent } from '../../domain/events/exchange-rate-received.event.js';
 import { IExchangeRateRepository } from '../../domain/repositories/exchange-rate.repository.js';
-import { IHourlyAveragePublisher } from '../ports/hourly-average-publisher.port.js';
+import { ILogger } from '../ports/logger.port.js';
+import { CalculateHourlyAverageUseCase } from './calculate-hourly-average.use-case.js';
 import { ExchangePair } from '@crypto-dashboard/shared';
 
 describe('ProcessExchangeRateUseCase', () => {
   let useCase: ProcessExchangeRateUseCase;
   let mockRepository: jest.Mocked<IExchangeRateRepository>;
-  let mockPublisher: jest.Mocked<IHourlyAveragePublisher>;
+  let mockCalculateHourlyAverage: jest.Mocked<CalculateHourlyAverageUseCase>;
+  let mockLogger: jest.Mocked<ILogger>;
 
   beforeEach(() => {
     mockRepository = {
@@ -20,12 +22,22 @@ describe('ProcessExchangeRateUseCase', () => {
       getAllHourlyAverages: jest.fn(),
     };
 
-    mockPublisher = {
-      getHourlyAverages$: jest.fn(),
-      publish: jest.fn(),
+    mockCalculateHourlyAverage = {
+      execute: jest.fn().mockResolvedValue(null),
+    } as any;
+
+    mockLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
     };
 
-    useCase = new ProcessExchangeRateUseCase(mockRepository, mockPublisher);
+    useCase = new ProcessExchangeRateUseCase(
+      mockRepository, 
+      mockCalculateHourlyAverage,
+      mockLogger
+    );
   });
 
   describe('execute', () => {
@@ -43,6 +55,42 @@ describe('ProcessExchangeRateUseCase', () => {
       expect(result).toBeInstanceOf(ExchangeRateReceivedEvent);
       expect(result.exchangeRate).toBe(exchangeRate);
       expect(result.occurredAt).toBeInstanceOf(Date);
+    });
+
+    it('should calculate hourly average immediately after saving', async () => {
+      const timestamp = new Date('2025-11-06T15:30:00.000Z');
+      const exchangeRate = new ExchangeRateEntity(
+        'ETH/USDC',
+        2000,
+        timestamp
+      );
+
+      await useCase.execute(exchangeRate);
+
+      expect(mockCalculateHourlyAverage.execute).toHaveBeenCalledTimes(1);
+      expect(mockCalculateHourlyAverage.execute).toHaveBeenCalledWith(
+        'ETH/USDC',
+        new Date('2025-11-06T15:00:00.000Z')
+      );
+    });
+
+    it('should not fail if hourly average calculation throws error', async () => {
+      const exchangeRate = new ExchangeRateEntity(
+        'ETH/USDC',
+        2000,
+        new Date()
+      );
+      const calculationError = new Error('Calculation error');
+      mockCalculateHourlyAverage.execute.mockRejectedValue(calculationError);
+
+      const result = await useCase.execute(exchangeRate);
+
+      expect(result).toBeInstanceOf(ExchangeRateReceivedEvent);
+      expect(mockRepository.save).toHaveBeenCalledWith(exchangeRate);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to calculate hourly average for ETH/USDC',
+        calculationError
+      );
     });
 
     it('should handle repository errors', async () => {

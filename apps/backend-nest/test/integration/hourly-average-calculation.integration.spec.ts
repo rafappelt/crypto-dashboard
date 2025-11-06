@@ -9,6 +9,7 @@ import {
   HourlyAverageCalculatorService,
   IExchangeRateRepository,
   IHourlyAveragePublisher,
+  createDefaultLogger,
 } from '@crypto-dashboard/backend-core';
 import { ExchangePair } from '@crypto-dashboard/shared';
 import { ExchangeRateEntity, HourlyAverageEntity } from '@crypto-dashboard/backend-core';
@@ -42,11 +43,15 @@ describe('Hourly Average Calculation Integration', () => {
 
     publisher = new RxJsHourlyAveragePublisher();
     calculator = new HourlyAverageCalculatorService();
-    processUseCase = new ProcessExchangeRateUseCase(repository, publisher);
     calculateUseCase = new CalculateHourlyAverageUseCase(
       calculator,
       repository,
       publisher,
+    );
+    processUseCase = new ProcessExchangeRateUseCase(
+      repository, 
+      calculateUseCase,
+      createDefaultLogger()
     );
     getLatestUseCase = new GetLatestHourlyAverageUseCase(repository);
   });
@@ -90,8 +95,8 @@ describe('Hourly Average Calculation Integration', () => {
 
   describe('Calculate Hourly Average', () => {
     it('should calculate hourly average from exchange rates', async () => {
-      const now = new Date();
-      const hour = new Date(now);
+      // Use a past hour to avoid timestamp validation errors
+      const hour = new Date('2024-01-01T10:00:00Z');
       hour.setMinutes(0, 0, 0);
       hour.setSeconds(0, 0);
       hour.setMilliseconds(0);
@@ -270,28 +275,28 @@ describe('Hourly Average Calculation Integration', () => {
 
   describe('End-to-End Flow', () => {
     it('should process rates, calculate average, and retrieve it', async () => {
-      const hour = new Date();
+      // Use a past hour to avoid timestamp validation issues
+      const hour = new Date('2024-01-01T14:00:00Z');
       hour.setMinutes(0, 0, 0);
       hour.setSeconds(0, 0);
       hour.setMilliseconds(0);
 
-      // Step 1: Process exchange rates
-      const now = new Date();
+      // Step 1: Process exchange rates within the same hour
       const rates = [
         new ExchangeRateEntity(
           testPair,
           3436.02,
-          new Date(now.getTime() - 50 * 60 * 1000), // 50 minutes ago
+          new Date(hour.getTime() + 10 * 60 * 1000), // 10 minutes into the hour
         ),
         new ExchangeRateEntity(
           testPair,
           3437.50,
-          new Date(now.getTime() - 40 * 60 * 1000), // 40 minutes ago
+          new Date(hour.getTime() + 20 * 60 * 1000), // 20 minutes into the hour
         ),
         new ExchangeRateEntity(
           testPair,
           3438.75,
-          new Date(now.getTime() - 30 * 60 * 1000), // 30 minutes ago
+          new Date(hour.getTime() + 30 * 60 * 1000), // 30 minutes into the hour
         ),
       ];
 
@@ -299,7 +304,7 @@ describe('Hourly Average Calculation Integration', () => {
         await processUseCase.execute(rate);
       }
 
-      // Step 2: Calculate hourly average
+      // Step 2: Calculate hourly average (though ProcessExchangeRateUseCase already did it)
       const calculationResult = await calculateUseCase.execute(testPair, hour);
       expect(calculationResult).not.toBeNull();
 
