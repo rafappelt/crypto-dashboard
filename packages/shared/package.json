@@ -18,7 +18,7 @@
     "test": "echo 'Shared package: No tests to run (types only)' && exit 0"
   },
   "devDependencies": {
-    "typescript": "^5.3.0"
+    "typescript": "5.9.3"
   }
 }
 
