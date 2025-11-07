@@ -45,7 +45,7 @@ export default function ErrorScreen({ errorCode, errorMessage }: ErrorScreenProp
   const getErrorIcon = () => {
     return (
       <svg
-        className="w-16 h-16 text-red-600"
+        className="w-12 h-12 md:w-16 md:h-16 text-red-600"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -62,26 +62,26 @@ export default function ErrorScreen({ errorCode, errorMessage }: ErrorScreenProp
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-        <div className="flex items-center justify-center w-20 h-20 mx-auto mb-6 bg-red-50 rounded-full">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 md:p-8">
+        <div className="flex items-center justify-center w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 bg-red-50 rounded-full">
           {getErrorIcon()}
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 text-center mb-3">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 text-center mb-2 md:mb-3">
           {getErrorTitle()}
         </h1>
-        <p className="text-gray-600 text-center mb-6 leading-relaxed">
+        <p className="text-sm md:text-base text-gray-600 text-center mb-4 md:mb-6 leading-relaxed">
           {getErrorDescription()}
         </p>
-        <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
-          <p className="text-sm font-medium text-gray-500 mb-1">Error Code:</p>
-          <code className="text-xs text-gray-700 font-mono bg-white px-2 py-1 rounded border">
+        <div className="bg-gray-50 rounded-lg p-3 md:p-4 mb-4 md:mb-6 border border-gray-200">
+          <p className="text-xs md:text-sm font-medium text-gray-500 mb-1">Error Code:</p>
+          <code className="text-xs text-gray-700 font-mono bg-white px-2 py-1 rounded border break-all">
             {errorCode}
           </code>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2 md:space-y-3">
           <button
             onClick={() => window.location.reload()}
-            className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="w-full bg-blue-600 text-white py-2 md:py-2.5 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm md:text-base"
           >
             Retry
           </button>
@@ -89,7 +89,7 @@ export default function ErrorScreen({ errorCode, errorMessage }: ErrorScreenProp
             href="https://finnhub.io/dashboard"
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full text-center text-blue-600 hover:text-blue-700 py-2.5 px-4 rounded-lg border border-blue-600 hover:border-blue-700 transition-colors font-medium"
+            className="block w-full text-center text-blue-600 hover:text-blue-700 py-2 md:py-2.5 px-4 rounded-lg border border-blue-600 hover:border-blue-700 transition-colors font-medium text-sm md:text-base"
           >
             Open Finnhub Dashboard
           </a>

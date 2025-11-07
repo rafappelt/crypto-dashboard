@@ -23,14 +23,14 @@ export default function ExchangeRateCard({ viewModel, isLoading = false }: Excha
   const formatTooltipLabel = viewModel.formatTooltipLabel || ((label: string) => new Date(label).toLocaleString());
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 flex flex-col transition-shadow hover:shadow-lg">
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">{viewModel.pairDisplay}</h2>
+    <div className="bg-white rounded-lg shadow-md p-4 md:p-6 flex flex-col transition-shadow hover:shadow-lg">
+      <div className="mb-3 md:mb-4">
+        <h2 className="text-lg md:text-xl font-semibold text-gray-900">{viewModel.pairDisplay}</h2>
       </div>
       
-      <div className="flex-1 flex flex-col gap-4">
-        <div className="w-full h-[200px]">
-          <ResponsiveContainer width="100%" height={200}>
+      <div className="flex-1 flex flex-col gap-3 md:gap-4">
+        <div className="w-full h-[180px] md:h-[200px]">
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
@@ -61,7 +61,7 @@ export default function ExchangeRateCard({ viewModel, isLoading = false }: Excha
           </ResponsiveContainer>
         </div>
 
-        <div className="flex flex-col gap-3 pt-4 border-t border-gray-200">
+        <div className="flex flex-col gap-2 md:gap-3 pt-3 md:pt-4 border-t border-gray-200">
           {viewModel.hasData && viewModel.currentPrice && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">{messages.exchangeRateCard.currentPrice}</span>

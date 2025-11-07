@@ -49,11 +49,11 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-white px-8 py-6 shadow-sm flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Crypto Dashboard</h1>
+      <header className="bg-white px-4 py-4 md:px-8 md:py-6 shadow-sm flex justify-between items-center gap-2">
+        <h1 className="text-lg md:text-2xl font-semibold text-gray-900 truncate">Crypto Dashboard</h1>
         <ConnectionStatus viewModel={viewModel.connectionStatus} />
       </header>
-      <main className="flex-1 p-8 max-w-7xl w-full mx-auto">
+      <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
         <Dashboard viewModel={viewModel} />
       </main>
     </div>

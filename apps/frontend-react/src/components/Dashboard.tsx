@@ -11,7 +11,7 @@ export default function Dashboard({ viewModel }: DashboardProps) {
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(400px,1fr))] gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
         {viewModel.exchangeRateCards.map((card: ExchangeRateCardViewModel) => (
           <ExchangeRateCard 
             key={card.pair} 
