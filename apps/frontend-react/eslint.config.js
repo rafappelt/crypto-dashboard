@@ -1,11 +1,21 @@
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-export default tseslint.config(
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+export default [
   ...tseslint.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        project: './tsconfig.json',
+        tsconfigRootDir: __dirname,
+      },
+    },
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
@@ -22,7 +32,7 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/**', 'node_modules/**', '.eslintrc.cjs', 'eslint.config.js'],
+    ignores: ['dist/**', 'node_modules/**', '.eslintrc.cjs', 'eslint.config.js', 'vite.config.ts', 'postcss.config.js', 'tailwind.config.js'],
   },
-);
+];
 

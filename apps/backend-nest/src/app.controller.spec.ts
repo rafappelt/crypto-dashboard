@@ -6,7 +6,6 @@ import { FinnhubHealthService } from './finnhub/finnhub-health.service.js';
 describe('AppController', () => {
   let controller: AppController;
   let service: AppService;
-  let _finnhubHealthService: jest.Mocked<FinnhubHealthService>;
 
   beforeEach(async () => {
     const mockFinnhubHealthService = {
@@ -29,7 +28,6 @@ describe('AppController', () => {
 
     controller = module.get<AppController>(AppController);
     service = module.get<AppService>(AppService);
-    _finnhubHealthService = module.get(FinnhubHealthService); // Used for mocking
   });
 
   it('should be defined', () => {

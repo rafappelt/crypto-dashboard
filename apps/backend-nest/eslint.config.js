@@ -1,10 +1,20 @@
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-export default tseslint.config(
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+export default [
   ...tseslint.configs.recommended,
   prettier,
   {
+    languageOptions: {
+      parserOptions: {
+        project: './tsconfig.json',
+        tsconfigRootDir: __dirname,
+      },
+    },
     rules: {
       '@typescript-eslint/interface-name-prefix': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
@@ -26,7 +36,8 @@ export default tseslint.config(
       '.eslintrc.js',
       'eslint.config.js',
       'src/__mocks__/**',
+      'test/**',
     ],
   },
-);
+];
 
