@@ -530,7 +530,3 @@ This project follows **Domain-Driven Design (DDD)** and **Clean Architecture** p
 
 **See**: [Architecture Documentation](./docs/architecture.md) for detailed pattern explanations
 
-
-## License
-
-This project is part of a take-home exercise.
