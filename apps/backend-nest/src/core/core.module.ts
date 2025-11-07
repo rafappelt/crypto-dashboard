@@ -9,6 +9,7 @@ import {
   HourlyAverageCalculatorService,
   ProcessExchangeRateUseCase,
   CalculateHourlyAverageUseCase,
+  PersistHourlyAveragesUseCase,
   GetLatestHourlyAverageUseCase,
   GetPriceHistoryUseCase,
   IExchangeRateRepository,
@@ -17,6 +18,7 @@ import {
   createDefaultLogger,
   DEFAULT_MAX_RECONNECT_ATTEMPTS,
   DEFAULT_HOURLY_AVERAGE_CALCULATION_INTERVAL_MS,
+  DEFAULT_PERSISTENCE_INTERVAL_MS,
 } from '@crypto-dashboard/backend-core';
 
 export const EXCHANGE_RATE_REPOSITORY = 'IExchangeRateRepository';
@@ -106,6 +108,16 @@ export const EXCHANGE_RATE_RECEIVER = 'IExchangeRateReceiver';
       },
       inject: [EXCHANGE_RATE_REPOSITORY],
     },
+    {
+      provide: PersistHourlyAveragesUseCase,
+      useFactory: (repository: IExchangeRateRepository) => {
+        return new PersistHourlyAveragesUseCase(
+          repository,
+          createDefaultLogger()
+        );
+      },
+      inject: [EXCHANGE_RATE_REPOSITORY],
+    },
     // Orchestrator
     {
       provide: ExchangeRateOrchestratorService,
@@ -113,20 +125,24 @@ export const EXCHANGE_RATE_RECEIVER = 'IExchangeRateReceiver';
         receiver: IExchangeRateReceiver,
         processUseCase: ProcessExchangeRateUseCase,
         calculateUseCase: CalculateHourlyAverageUseCase,
+        persistUseCase: PersistHourlyAveragesUseCase,
       ) => {
         return new ExchangeRateOrchestratorService(
           receiver,
           processUseCase,
           calculateUseCase,
+          persistUseCase,
           createDefaultLogger(),
           [...DEFAULT_EXCHANGE_PAIRS],
           DEFAULT_HOURLY_AVERAGE_CALCULATION_INTERVAL_MS,
+          DEFAULT_PERSISTENCE_INTERVAL_MS,
         );
       },
       inject: [
         EXCHANGE_RATE_RECEIVER,
         ProcessExchangeRateUseCase,
         CalculateHourlyAverageUseCase,
+        PersistHourlyAveragesUseCase,
       ],
     },
   ],
@@ -137,6 +153,7 @@ export const EXCHANGE_RATE_RECEIVER = 'IExchangeRateReceiver';
     HourlyAverageCalculatorService,
     ProcessExchangeRateUseCase,
     CalculateHourlyAverageUseCase,
+    PersistHourlyAveragesUseCase,
     GetLatestHourlyAverageUseCase,
     GetPriceHistoryUseCase,
     ExchangeRateOrchestratorService,

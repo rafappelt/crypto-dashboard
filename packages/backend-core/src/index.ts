@@ -12,6 +12,7 @@ export * from './application/ports/hourly-average-publisher.port.js';
 export * from './application/ports/logger.port.js';
 export * from './application/use-cases/process-exchange-rate.use-case.js';
 export * from './application/use-cases/calculate-hourly-average.use-case.js';
+export * from './application/use-cases/persist-hourly-averages.use-case.js';
 export * from './application/use-cases/get-latest-hourly-average.use-case.js';
 export * from './application/use-cases/get-price-history.use-case.js';
 export * from './application/services/exchange-rate-orchestrator.service.js';

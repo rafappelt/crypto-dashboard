@@ -161,10 +161,16 @@ describe('Hourly Average Calculation Integration', () => {
 
       await calculateUseCase.execute(testPair, hour);
 
+      // Flush to disk before verifying persistence
+      await repository.flushHourlyAveragesToDisk();
+
       // Verify it was persisted by creating a new repository instance
       const newRepository = new FileSystemExchangeRateRepository(testDataDir, [
         testPair,
       ]);
+      // Wait for the new repository to load cached averages
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
       const savedAverage = await newRepository.getLatestHourlyAverage(testPair);
 
       expect(savedAverage).not.toBeNull();

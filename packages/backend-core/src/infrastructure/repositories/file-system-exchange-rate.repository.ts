@@ -22,6 +22,7 @@ interface StorageData {
 
 export class FileSystemExchangeRateRepository implements IExchangeRateRepository {
   private priceHistory: Map<ExchangePair, ExchangeRateEntity[]> = new Map();
+  private hourlyAverageCache: Map<string, HourlyAverageEntity> = new Map();
   private readonly storageFilePath: string;
   private readonly logger: ILogger;
   private readonly dataDir: string;
@@ -41,10 +42,23 @@ export class FileSystemExchangeRateRepository implements IExchangeRateRepository
       this.priceHistory.set(pair, []);
     });
 
-    // Ensure data directory exists
-    this.ensureDataDirectory().catch((error) => {
-      this.logger.error('Failed to create data directory', error);
-    });
+    // Ensure data directory exists and load cached averages
+    this.ensureDataDirectory()
+      .then(() => this.loadCachedAverages())
+      .catch((error) => {
+        this.logger.error('Failed to initialize repository', error);
+      });
+  }
+
+  private async loadCachedAverages(): Promise<void> {
+    try {
+      const storageData = await this.loadStorageData();
+      for (const [key, data] of Object.entries(storageData.hourlyAverages)) {
+        this.hourlyAverageCache.set(key, this.dataToHourlyAverage(data));
+      }
+    } catch (error) {
+      this.logger.error('Failed to load cached averages from disk', error);
+    }
   }
 
   private async ensureDataDirectory(): Promise<void> {
@@ -152,55 +166,52 @@ export class FileSystemExchangeRateRepository implements IExchangeRateRepository
   }
 
   async getLatestHourlyAverage(pair: ExchangePair): Promise<HourlyAverageEntity | null> {
-    const release = await this.fileMutex.acquire();
-    try {
-      const storageData = await this.loadStorageData();
-      const keyPrefix = `${pair}-`;
-      let latest: HourlyAverageEntity | null = null;
-      let latestTime = 0;
+    const keyPrefix = `${pair}-`;
+    let latest: HourlyAverageEntity | null = null;
+    let latestTime = 0;
 
-      for (const [key, data] of Object.entries(storageData.hourlyAverages)) {
-        if (key.startsWith(keyPrefix)) {
-          const hour = new Date(data.hour);
-          const time = hour.getTime();
-          if (time > latestTime) {
-            latestTime = time;
-            latest = this.dataToHourlyAverage(data);
-          }
+    // Check cache first
+    for (const [key, average] of this.hourlyAverageCache.entries()) {
+      if (key.startsWith(keyPrefix)) {
+        const time = average.hour.getTime();
+        if (time > latestTime) {
+          latestTime = time;
+          latest = average;
         }
       }
-
-      return latest;
-    } finally {
-      release();
     }
+
+    return latest;
   }
 
   async saveHourlyAverage(average: HourlyAverageEntity): Promise<void> {
-    await this.atomicFileOperation(async (storageData) => {
-      const key = average.getKey();
-      storageData.hourlyAverages[key] = this.hourlyAverageToData(average);
-      return { data: storageData, result: undefined };
-    });
+    // Save to cache only (fast, in-memory operation)
+    const key = average.getKey();
+    this.hourlyAverageCache.set(key, average);
   }
 
   async getAllHourlyAverages(pair: ExchangePair): Promise<HourlyAverageEntity[]> {
-    const release = await this.fileMutex.acquire();
-    try {
-      const storageData = await this.loadStorageData();
-      const keyPrefix = `${pair}-`;
-      const averages: HourlyAverageEntity[] = [];
+    const keyPrefix = `${pair}-`;
+    const averages: HourlyAverageEntity[] = [];
 
-      for (const [key, data] of Object.entries(storageData.hourlyAverages)) {
-        if (key.startsWith(keyPrefix)) {
-          averages.push(this.dataToHourlyAverage(data));
-        }
+    // Get from cache
+    for (const [key, average] of this.hourlyAverageCache.entries()) {
+      if (key.startsWith(keyPrefix)) {
+        averages.push(average);
       }
-
-      return averages.sort((a, b) => b.hour.getTime() - a.hour.getTime());
-    } finally {
-      release();
     }
+
+    return averages.sort((a, b) => b.hour.getTime() - a.hour.getTime());
+  }
+
+  async flushHourlyAveragesToDisk(): Promise<void> {
+    await this.atomicFileOperation(async (storageData) => {
+      // Update storage data with all cached averages
+      for (const [key, average] of this.hourlyAverageCache.entries()) {
+        storageData.hourlyAverages[key] = this.hourlyAverageToData(average);
+      }
+      return { data: storageData, result: undefined };
+    });
   }
 }
 

@@ -15,6 +15,7 @@ describe('GetLatestHourlyAverageUseCase', () => {
       getLatestHourlyAverage: jest.fn(),
       saveHourlyAverage: jest.fn(),
       getAllHourlyAverages: jest.fn(),
+      flushHourlyAveragesToDisk: jest.fn().mockResolvedValue(undefined),
     };
 
     useCase = new GetLatestHourlyAverageUseCase(mockRepository);

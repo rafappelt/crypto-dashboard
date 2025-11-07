@@ -9,4 +9,5 @@ export interface IExchangeRateRepository {
   getLatestHourlyAverage(pair: ExchangePair): Promise<HourlyAverageEntity | null>;
   saveHourlyAverage(average: HourlyAverageEntity): Promise<void>;
   getAllHourlyAverages(pair: ExchangePair): Promise<HourlyAverageEntity[]>;
+  flushHourlyAveragesToDisk(): Promise<void>;
 }

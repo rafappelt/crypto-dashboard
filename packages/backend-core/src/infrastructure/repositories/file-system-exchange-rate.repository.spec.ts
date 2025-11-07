@@ -122,7 +122,7 @@ describe('FileSystemExchangeRateRepository', () => {
   });
 
   describe('saveHourlyAverage', () => {
-    it('should save a hourly average to file', async () => {
+    it('should save a hourly average to cache', async () => {
       const pair: ExchangePair = 'ETH/USDC';
       const hour = new Date('2024-01-01T10:00:00Z');
       hour.setMinutes(0, 0, 0);
@@ -132,7 +132,7 @@ describe('FileSystemExchangeRateRepository', () => {
 
       await repository.saveHourlyAverage(average);
 
-      // Verify it was saved to file
+      // Verify it was saved to cache (available immediately)
       const result = await repository.getLatestHourlyAverage(pair);
       expect(result).not.toBeNull();
       expect(result?.pair).toBe(pair);
@@ -140,7 +140,7 @@ describe('FileSystemExchangeRateRepository', () => {
       expect(result?.sampleCount).toBe(100);
     });
 
-    it('should persist across repository instances', async () => {
+    it('should update cache without writing to disk', async () => {
       const pair: ExchangePair = 'ETH/USDC';
       const hour = new Date('2024-01-01T10:00:00Z');
       hour.setMinutes(0, 0, 0);
@@ -150,13 +150,65 @@ describe('FileSystemExchangeRateRepository', () => {
 
       await repository.saveHourlyAverage(average);
 
+      // Create a new repository instance - should not see the average yet
+      const newRepository = new FileSystemExchangeRateRepository(testDataDir, pairs);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const result = await newRepository.getLatestHourlyAverage(pair);
+      expect(result).toBeNull(); // Not flushed yet
+    });
+  });
+
+  describe('flushHourlyAveragesToDisk', () => {
+    it('should persist cached averages to disk', async () => {
+      const pair: ExchangePair = 'ETH/USDC';
+      const hour = new Date('2024-01-01T10:00:00Z');
+      hour.setMinutes(0, 0, 0);
+      hour.setMilliseconds(0);
+
+      const average = new HourlyAverageEntity(pair, 2000, hour, 100);
+
+      await repository.saveHourlyAverage(average);
+      await repository.flushHourlyAveragesToDisk();
+
       // Create a new repository instance pointing to the same directory
       const newRepository = new FileSystemExchangeRateRepository(testDataDir, pairs);
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const result = await newRepository.getLatestHourlyAverage(pair);
       expect(result).not.toBeNull();
       expect(result?.pair).toBe(pair);
       expect(result?.averagePrice).toBe(2000);
+    });
+
+    it('should persist multiple cached averages to disk', async () => {
+      const pair: ExchangePair = 'ETH/USDC';
+      const hour1 = new Date('2024-01-01T10:00:00Z');
+      hour1.setMinutes(0, 0, 0);
+      hour1.setMilliseconds(0);
+
+      const hour2 = new Date('2024-01-01T11:00:00Z');
+      hour2.setMinutes(0, 0, 0);
+      hour2.setMilliseconds(0);
+
+      const average1 = new HourlyAverageEntity(pair, 2000, hour1, 100);
+      const average2 = new HourlyAverageEntity(pair, 2100, hour2, 120);
+
+      await repository.saveHourlyAverage(average1);
+      await repository.saveHourlyAverage(average2);
+      await repository.flushHourlyAveragesToDisk();
+
+      // Create a new repository instance
+      const newRepository = new FileSystemExchangeRateRepository(testDataDir, pairs);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const allAverages = await newRepository.getAllHourlyAverages(pair);
+      expect(allAverages).toHaveLength(2);
+      expect(allAverages.map(a => a.averagePrice)).toEqual(expect.arrayContaining([2000, 2100]));
+    });
+
+    it('should handle flushing empty cache', async () => {
+      await expect(repository.flushHourlyAveragesToDisk()).resolves.not.toThrow();
     });
   });
 
@@ -251,10 +303,10 @@ describe('FileSystemExchangeRateRepository', () => {
         return new HourlyAverageEntity(pair, 2000 + i * 100, hour, 100 + i);
       });
 
-      // Save all averages concurrently
+      // Save all averages concurrently (to cache)
       await Promise.all(averages.map((avg) => repository.saveHourlyAverage(avg)));
 
-      // Verify all were saved correctly
+      // Verify all were saved correctly in cache
       const allAverages = await repository.getAllHourlyAverages(pair);
       expect(allAverages).toHaveLength(20);
 
@@ -274,7 +326,7 @@ describe('FileSystemExchangeRateRepository', () => {
       baseHour.setMinutes(0, 0, 0);
       baseHour.setMilliseconds(0);
 
-      // Start concurrent writes and reads
+      // Start concurrent writes and reads (all from cache)
       const writePromises = Array.from({ length: 10 }, (_, i) => {
         const hour = new Date(baseHour);
         hour.setHours(hour.getHours() + i);
@@ -291,6 +343,37 @@ describe('FileSystemExchangeRateRepository', () => {
 
       // Verify final state is correct
       const allAverages = await repository.getAllHourlyAverages(pair);
+      expect(allAverages).toHaveLength(10);
+    });
+
+    it('should handle concurrent flush operations without data corruption', async () => {
+      const pair: ExchangePair = 'ETH/USDC';
+      const baseHour = new Date('2024-01-01T10:00:00Z');
+      baseHour.setMinutes(0, 0, 0);
+      baseHour.setMilliseconds(0);
+
+      // Create multiple averages
+      const averages = Array.from({ length: 10 }, (_, i) => {
+        const hour = new Date(baseHour);
+        hour.setHours(hour.getHours() + i);
+        return new HourlyAverageEntity(pair, 2000 + i * 100, hour, 100 + i);
+      });
+
+      // Save all averages
+      await Promise.all(averages.map((avg) => repository.saveHourlyAverage(avg)));
+
+      // Flush multiple times concurrently
+      await Promise.all([
+        repository.flushHourlyAveragesToDisk(),
+        repository.flushHourlyAveragesToDisk(),
+        repository.flushHourlyAveragesToDisk(),
+      ]);
+
+      // Create a new repository and verify data
+      const newRepository = new FileSystemExchangeRateRepository(testDataDir, pairs);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const allAverages = await newRepository.getAllHourlyAverages(pair);
       expect(allAverages).toHaveLength(10);
     });
   });

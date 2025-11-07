@@ -1,6 +1,7 @@
 import { ExchangeRateOrchestratorService } from './exchange-rate-orchestrator.service.js';
 import { ProcessExchangeRateUseCase } from '../use-cases/process-exchange-rate.use-case.js';
 import { CalculateHourlyAverageUseCase } from '../use-cases/calculate-hourly-average.use-case.js';
+import { PersistHourlyAveragesUseCase } from '../use-cases/persist-hourly-averages.use-case.js';
 import { IExchangeRateReceiver } from '../ports/exchange-rate-receiver.port.js';
 import { ILogger } from '../ports/logger.port.js';
 import { ExchangeRateEntity } from '../../domain/entities/exchange-rate.entity.js';
@@ -12,6 +13,7 @@ describe('ExchangeRateOrchestratorService', () => {
   let mockReceiver: jest.Mocked<IExchangeRateReceiver>;
   let mockProcessUseCase: jest.Mocked<ProcessExchangeRateUseCase>;
   let mockCalculateUseCase: jest.Mocked<CalculateHourlyAverageUseCase>;
+  let mockPersistUseCase: jest.Mocked<PersistHourlyAveragesUseCase>;
   let mockLogger: jest.Mocked<ILogger>;
   let receiverSubject: Subject<ExchangeRateEntity>;
 
@@ -32,6 +34,10 @@ describe('ExchangeRateOrchestratorService', () => {
       execute: jest.fn().mockResolvedValue(null),
     } as any;
 
+    mockPersistUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    } as any;
+
     mockLogger = {
       debug: jest.fn(),
       info: jest.fn(),
@@ -44,9 +50,11 @@ describe('ExchangeRateOrchestratorService', () => {
       mockReceiver,
       mockProcessUseCase,
       mockCalculateUseCase,
+      mockPersistUseCase,
       mockLogger,
       pairs,
-      60000
+      60000,
+      20000
     );
   });
 
@@ -95,6 +103,24 @@ describe('ExchangeRateOrchestratorService', () => {
       expect(setIntervalSpy).toHaveBeenCalled();
       setIntervalSpy.mockRestore();
     });
+
+    it('should persist hourly averages immediately on start', async () => {
+      await orchestrator.start();
+
+      // Wait for immediate persistence
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(mockPersistUseCase.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('should set up periodic persistence interval', async () => {
+      const setIntervalSpy = jest.spyOn(global, 'setInterval');
+      await orchestrator.start();
+
+      // Should have 2 intervals: calculation and persistence
+      expect(setIntervalSpy).toHaveBeenCalledTimes(2);
+      setIntervalSpy.mockRestore();
+    });
   });
 
   describe('stop', () => {
@@ -105,13 +131,37 @@ describe('ExchangeRateOrchestratorService', () => {
       expect(mockReceiver.disconnect).toHaveBeenCalledTimes(1);
     });
 
-    it('should clear calculation interval', async () => {
+    it('should clear both intervals', async () => {
       const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
       await orchestrator.start();
       await orchestrator.stop();
 
-      expect(clearIntervalSpy).toHaveBeenCalled();
+      // Should clear both calculation and persistence intervals
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(2);
       clearIntervalSpy.mockRestore();
+    });
+
+    it('should flush hourly averages before stopping', async () => {
+      await orchestrator.start();
+      
+      // Reset the call count from start
+      mockPersistUseCase.execute.mockClear();
+      
+      await orchestrator.stop();
+
+      expect(mockPersistUseCase.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not throw if flush fails during stop', async () => {
+      mockPersistUseCase.execute.mockRejectedValue(new Error('Flush error'));
+      
+      await orchestrator.start();
+      await expect(orchestrator.stop()).resolves.not.toThrow();
+      
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error flushing hourly averages on shutdown',
+        expect.any(Error)
+      );
     });
   });
 });

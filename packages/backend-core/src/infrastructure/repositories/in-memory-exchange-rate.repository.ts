@@ -80,4 +80,8 @@ export class InMemoryExchangeRateRepository implements IExchangeRateRepository {
 
     return averages.sort((a, b) => b.hour.getTime() - a.hour.getTime());
   }
+
+  async flushHourlyAveragesToDisk(): Promise<void> {
+    // No-op for in-memory repository (nothing to flush)
+  }
 }

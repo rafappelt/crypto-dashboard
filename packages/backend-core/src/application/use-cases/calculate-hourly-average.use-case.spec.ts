@@ -28,6 +28,7 @@ describe('CalculateHourlyAverageUseCase', () => {
       getLatestHourlyAverage: jest.fn(),
       saveHourlyAverage: jest.fn().mockResolvedValue(undefined),
       getAllHourlyAverages: jest.fn(),
+      flushHourlyAveragesToDisk: jest.fn().mockResolvedValue(undefined),
     };
 
     mockPublisher = {
